@@ -4,12 +4,23 @@ ini_set('display_errors', 0);
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+// .env-Datei laden (falls vorhanden)
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (str_starts_with(trim($line), '#')) continue;
+        if (str_contains($line, '=')) {
+            putenv(trim($line));
+        }
+    }
+}
+
 define('DB_HOST', getenv('DB_HOST') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: '');
 define('DB_USER', getenv('DB_USER') ?: '');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 
-define('SITE_URL', '');
+define('SITE_URL', getenv('SITE_URL') ?: '');
 define('ADMIN_USER', 'admin');
 define('ADMIN_PASS_HASH', password_hash('admin', PASSWORD_DEFAULT));
 
@@ -35,7 +46,7 @@ define('BANK_PC', '85-123-0');
 define('BANK_IBAN', 'CH13 0078 4010 0907 5200 1');
 define('BANK_INFO_TEXT', 'Bitte bis 5 Tage vor Konzertbeginn einzahlen:');
 
-define('SALES_EMAIL', '');
+define('SALES_EMAIL', getenv('SALES_EMAIL') ?: '');
 
 function getDb(): PDO {
     static $pdo = null;
