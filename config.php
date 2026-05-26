@@ -28,8 +28,8 @@ define('RESERVATION_EXPIRY_HOURS', 24);
 define('RATE_LIMIT_MAX', 5);
 define('RATE_LIMIT_WINDOW_HOURS', 1);
 
-define('EMAIL_FROM', 'webseite@oratorienchor-kreuzlingen.ch');
-define('EMAIL_FROM_NAME', 'Oratorienchor Kreuzlingen');
+define('EMAIL_FROM', getenv('EMAIL_FROM') ?: '');
+define('EMAIL_FROM_NAME', getenv('EMAIL_FROM_NAME') ?: '');
 
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'localhost');
 define('SMTP_PORT', (int)(getenv('SMTP_PORT') ?: 25));
