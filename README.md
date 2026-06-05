@@ -47,19 +47,24 @@ Erzeugt die Datenbank `vabibese_tickets` mit allen Tabellen:
 
 ### 4. Konfiguration anpassen
 
-`config.php` enthält alle Konstanten. Für Production via Umgebungsvariablen überschreiben:
+Konfiguration via `.env`-Datei (git-ignoriert) oder Umgebungsvariablen. `config.php` wertet in dieser Reihenfolge aus: Env-Vars → `.env` → Hardcoded-Defaults.
 
 ```bash
+# .env (im Projektverzeichnis)
 DB_HOST=vabibese.mysql.db.internal
 DB_NAME=vabibese_tickets
 DB_USER=vabibese_reserv
 DB_PASS=secret
+SITE_URL=https://tickets.oratorienchor-kreuzlingen.ch
+SALES_EMAIL=billettverkauf@oratorienchor-kreuzlingen.ch
+EMAIL_FROM=webseite@oratorienchor-kreuzlingen.ch
 SMTP_HOST=smtp.hostpoint.ch
 SMTP_PORT=587
 SMTP_USER=webseite@oratorienchor-kreuzlingen.ch
 SMTP_PASS=secret
 ```
 
+`DB_HOST` kann optional einen Port enthalten (`host:3306`) – wird automatisch korrekt ins PDO-DSN übernommen.  
 Ohne `SMTP_USER`/`SMTP_PASS` wird der lokale MTA (localhost:25) ohne Authentifizierung verwendet.
 
 **Wichtige Konstanten:**
@@ -109,8 +114,8 @@ Passwort nach der ersten Anmeldung im Admin-Bereich ändern.
 1. **Sitzplan laden** – Die Webseite lädt den Sitzplan via `api/get-seats.php`, zeigt verfügbare, reservierte, deaktivierte und Bodan-Plätze farblich an.
 2. **Plätze auswählen** – Klick auf verfügbare Plätze (nicht Bodan) fügt sie dem Warenkorb hinzu. Studentenpreis und Lieferoption (Abholung/Zustellung) wählbar.
 3. **Formular ausfüllen** – Name, E-Mail, optional Telefon/Adresse/Notizen. Honeypot-Feld schützt vor Bots.
-4. **Reservierung senden** – `POST /api/reserve.php` validiert, prüft Rate-Limiting, erstellt die Reservierung mit 32-Byte-Token und sendet Bestätigungs-E-Mail.
-5. **E-Mail bestätigen** – Kunde klickt Link in der E-Mail, `confirm.php` setzt Status auf `confirmed`, markiert Plätze im Sitzplan und sendet Zahlungsinformationen.
+4. **Reservierung senden** – `POST /api/reserve.php` validiert, prüft Rate-Limiting, erstellt die Reservierung mit 32-Byte-Token in einer DB-Transaktion (mit `SELECT ... FOR UPDATE`) und sendet Bestätigungs-E-Mail.
+5. **E-Mail bestätigen** – Kunde klickt Link in der E-Mail, `confirm.php` markiert Sitze in einer Transaktion mit `rowCount()`-Prüfung: nur wenn alle Sitze noch frei sind, wird die Reservierung bestätigt und die Zahlungs-E-Mail gesendet. Bei Konflikt wird zurückgerollt.
 6. **Cron** – Bereinigt stündlich abgelaufene `pending`-Reservierungen.
 
 ## Architektur
@@ -134,7 +139,7 @@ OCK-Tickets/
 │   ├── reserve.php           # POST – Reservierung erstellen
 │   ├── confirm.php           # GET  – Bestätigungslink
 │   ├── reservation-by-seat.php # GET  – Reservierungsdaten zu Platz (Admin)
-│   └── admin-update-seat.php # POST – Platzstatus ändern (Admin)
+│   └── admin-update-seat.php # POST – Platzstatus ändern (Admin); berechnet `total_amount` bei Seat-Entfernung neu
 │
 ├── assets/
 │   ├── style.css             # Komplettes CSS
@@ -190,10 +195,12 @@ Tabelle | Inhalt
 
 ### Sitzplatz-Status
 
-- `available` – verfügbar (Kategoriefarbe)
-- `reserved` – reserviert/vergeben (grau, durchgestrichen)
-- `pending` – wird reserviert (gelb)
-- `disabled` – vom Admin deaktiviert (weiss, roter Diagonalstrich)
+Die effektiven Status `reserved` und `pending` werden aus den aktuellen Reservierungen abgeleitet, nicht aus `seats.status`:
+
+- `available` – verfügbar (Kategoriefarbe) — in `seats.status` gespeichert
+- `reserved` – reserviert/vergeben (grau, durchgestrichen) — aus `reservations`-Tabelle abgeleitet
+- `pending` – wird reserviert (gelb) — aus `reservations`-Tabelle abgeleitet
+- `disabled` – vom Admin deaktiviert (weiss, roter Diagonalstrich) — in `seats.status` gespeichert
 
 ## Sicherheit
 
@@ -202,6 +209,9 @@ Tabelle | Inhalt
 - **Rate-Limiting** – 5 Versuche pro Stunde pro IP (Reservierung + Admin-Login)
 - **Honeypot** – unsichtbares Feld gegen Bots
 - **Session-Management** – Admin-Sitzung mit `session_start()`
+- **CSRF-Schutz** – Alle Admin-Formulare und der `admin-update-seat.php`-Endpunkt validieren ein Session-gebundenes CSRF-Token
+- **Transaktionsschutz** – `reserve.php` und `confirm.php` verwenden DB-Transaktionen mit `FOR UPDATE` bzw. `rowCount()`-Prüfung gegen Double-Booking
+- **Logout via POST** – Admin-Logout erfordert POST + CSRF-Token
 - **CSP-Header** – Content-Security-Policy eingeschränkt
 - **HTTPS-Erzwingung** – via .htaccess-Rewrite
 - **Dateisperren** – `.htaccess` blockiert direkten Zugriff auf `config.php`, `db_schema.php`, `composer.*`
