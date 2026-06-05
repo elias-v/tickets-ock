@@ -55,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($_POST['confirmed'])) {
             $err = 'Löschvorgang nicht bestätigt.';
         } else {
+            // Free all reserved/pending seats before deleting
+            $rows = $db->query("SELECT seats_json FROM reservations WHERE status IN ('confirmed','pending')")->fetchAll();
+            $freeStmt = $db->prepare("UPDATE seats SET status = 'available' WHERE seat_number = ?");
+            foreach ($rows as $r) {
+                foreach (json_decode($r['seats_json'], true) ?: [] as $num) {
+                    $freeStmt->execute([(int)$num]);
+                }
+            }
             $db->exec("DELETE FROM reservations");
             $msg = 'Alle Reservierungen wurden gelöscht.';
         }
@@ -62,6 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete_reservation') {
         $id = (int)($_POST['id'] ?? 0);
+        // Free seats before deleting
+        $stmt = $db->prepare("SELECT seats_json FROM reservations WHERE id = ?");
+        $stmt->execute([$id]);
+        if ($row = $stmt->fetch()) {
+            $freeStmt = $db->prepare("UPDATE seats SET status = 'available' WHERE seat_number = ?");
+            foreach (json_decode($row['seats_json'], true) ?: [] as $num) {
+                $freeStmt->execute([(int)$num]);
+            }
+        }
         $db->prepare("DELETE FROM reservations WHERE id = ?")->execute([$id]);
         $msg = 'Reservierung gelöscht.';
     }
