@@ -7,13 +7,6 @@ header('Content-Type: application/json; charset=utf-8');
 
 $db = getDb();
 
-// Auto-migrate is_bodan column
-try {
-    $db->exec("ALTER TABLE seats ADD COLUMN is_bodan TINYINT(1) NOT NULL DEFAULT 0 AFTER status");
-    $db->exec("UPDATE seats SET is_bodan = 1 WHERE status = 'bodan'");
-    $db->exec("UPDATE seats SET status = 'available' WHERE status = 'bodan'");
-} catch (Exception $e) {}
-
 // Expire old pending reservations
 $db->prepare("
     UPDATE reservations 

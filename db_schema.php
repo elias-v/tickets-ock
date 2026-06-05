@@ -3,7 +3,13 @@ require_once __DIR__ . '/config.php';
 
 echo "Creating database schema...\n";
 
-$dsn = sprintf('mysql:host=%s;charset=utf8mb4', DB_HOST);
+$host = DB_HOST;
+$extraPort = '';
+if (str_contains($host, ':')) {
+    [$host, $extraPort] = explode(':', $host, 2);
+    $extraPort = ';port=' . (int)$extraPort;
+}
+$dsn = sprintf('mysql:host=%s%s;charset=utf8mb4', $host, $extraPort);
 $pdo = new PDO($dsn, DB_USER, DB_PASS, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
 ]);

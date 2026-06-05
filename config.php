@@ -50,7 +50,13 @@ define('SALES_EMAIL', getenv('SALES_EMAIL') ?: '');
 function getDb(): PDO {
     static $pdo = null;
     if ($pdo === null) {
-        $dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', DB_HOST, DB_NAME);
+        $host = DB_HOST;
+        $extraPort = '';
+        if (str_contains($host, ':')) {
+            [$host, $extraPort] = explode(':', $host, 2);
+            $extraPort = ';port=' . (int)$extraPort;
+        }
+        $dsn = sprintf('mysql:host=%s%s;dbname=%s;charset=utf8mb4', $host, $extraPort, DB_NAME);
         $pdo = new PDO($dsn, DB_USER, DB_PASS, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
