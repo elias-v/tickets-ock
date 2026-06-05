@@ -66,12 +66,15 @@ foreach ($seats as $seat) {
     $status = $seat['status'];
     $isBodan = (int)$seat['is_bodan'];
 
-    // Override with pending/confirmed
-    if ($status === 'available' && isset($pendingSet[$num])) {
-        $status = 'pending';
-    }
-    if (($status === 'available' || $status === 'pending') && isset($confirmedSet[$num])) {
+    // Derive effective status from reservations, not from seats.status
+    if ($status === 'disabled') {
+        // keep disabled
+    } elseif (isset($confirmedSet[$num])) {
         $status = 'reserved';
+    } elseif (isset($pendingSet[$num])) {
+        $status = 'pending';
+    } else {
+        $status = 'available';
     }
 
     $result[] = [

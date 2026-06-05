@@ -22,7 +22,6 @@ define('DB_PASS', getenv('DB_PASS') ?: '');
 
 define('SITE_URL', getenv('SITE_URL') ?: '');
 define('ADMIN_USER', 'admin');
-define('ADMIN_PASS_HASH', password_hash('admin', PASSWORD_DEFAULT));
 
 define('RESERVATION_EXPIRY_HOURS', 24);
 define('RATE_LIMIT_MAX', 5);
