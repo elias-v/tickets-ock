@@ -1,0 +1,41 @@
+RewriteEngine On
+RewriteBase /
+
+# Redirect HTTP to HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Deny access to config
+<FilesMatch "config\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to database schema
+<FilesMatch "db_schema\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to composer files
+<FilesMatch "(composer\.(json|lock)|\.env)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src 'self' https://www.youtube.com; object-src 'none'"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Cache static assets
+<FilesMatch "\.(css|js|png|jpg|gif|ico|svg)$">
+    Header set Cache-Control "public, max-age=604800, immutable"
+</FilesMatch>
