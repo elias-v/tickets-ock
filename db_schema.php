@@ -163,11 +163,11 @@ foreach ($rows5to18 as $row => $seats) {
 // Bodan rows – seeded as available, then marked is_bodan
 insertSeats($stmt, 162, 170, 8, '1', 'left', 9, 'available');
 insertSeats($stmt, 171, 180, 8, '1', 'right', 19, 'available');
-insertSeats($stmt, 221, 240, 11, '1', 'left', 8, 'available');
+insertSeats($stmt, 221, 230, 11, '1', 'left', 8, 'available');
 insertSeats($stmt, 231, 240, 11, '1', 'right', 19, 'available');
-insertSeats($stmt, 281, 300, 14, '1', 'left', 8, 'available');
+insertSeats($stmt, 281, 290, 14, '1', 'left', 8, 'available');
 insertSeats($stmt, 291, 300, 14, '1', 'right', 19, 'available');
-insertSeats($stmt, 341, 360, 17, '2', 'left', 8, 'available');
+insertSeats($stmt, 341, 350, 17, '2', 'left', 8, 'available');
 insertSeats($stmt, 351, 360, 17, '2', 'right', 19, 'available');
 
 // Also the front bodan rows from earlier

@@ -33,58 +33,69 @@ if (!$res) {
     $db->prepare("UPDATE reservations SET status = 'expired' WHERE id = ?")->execute([$res['id']]);
     $error = 'Dieser Bestätigungslink ist abgelaufen. Bitte erstelle eine neue Reservierung.';
 } else {
-    // Confirm the reservation
-    $db->prepare("
-        UPDATE reservations SET status = 'confirmed', confirmed_at = NOW() WHERE id = ?
-    ")->execute([$res['id']]);
+    $db->beginTransaction();
 
-    // Mark seats as reserved in the seats table
+    // Mark seats as reserved in the seats table (before confirming reservation)
     $seatNums = json_decode($res['seats_json'], true) ?: [];
     $updateStmt = $db->prepare("UPDATE seats SET status = 'reserved' WHERE seat_number = ? AND status = 'available'");
+    $updatedCount = 0;
     foreach ($seatNums as $num) {
         $updateStmt->execute([(int)$num]);
+        $updatedCount += $updateStmt->rowCount();
     }
 
-    $success = 'Deine Reservierung wurde erfolgreich bestätigt!';
+    // All seats must have been available
+    if ($updatedCount !== count($seatNums)) {
+        $db->rollBack();
+        $error = 'Einige Plätze sind nicht mehr verfügbar. Deine Reservierung konnte nicht bestätigt werden.';
+    } else {
+        // Confirm the reservation
+        $db->prepare("
+            UPDATE reservations SET status = 'confirmed', confirmed_at = NOW() WHERE id = ?
+        ")->execute([$res['id']]);
+        $db->commit();
 
-    // Send payment info email
-    $seatList = implode(', ', json_decode($res['seats_json'], true) ?: []);
-    $delivery = $res['delivery_option'] ?? 'pickup';
-    $deliveryAddress = $res['address'] ?? '';
-    $concertDate = getSetting('concert_date', 'Sonntag, 27. September 2026, 17:00 Uhr');
-    $concertLocation = getSetting('concert_location', 'Kirche St. Stefan, Kreuzlingen-Emmishofen');
-    $concertHtml = '<p style="font-size:0.9rem;color:#888;">' . htmlspecialchars($concertDate) . '<br>' . htmlspecialchars($concertLocation) . '</p>';
-    $subject = 'Ticket-Reservierung erfolgreich';
-    $body = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-        body { font-family: -apple-system, sans-serif; color: #333; line-height: 1.6; }
-        .footer { margin-top:24px; font-size:0.85rem; color:#888; }
-    </style></head><body>
-        <h2>Ticket-Reservierung</h2>
-        ' . $concertHtml . '
-        <p>Sehr geehrte/r ' . htmlspecialchars($res['customer_name']) . ',</p>
-        <p>Ihre Reservierung für folgende Plätze ist bestätigt:</p>
-        <p><strong>' . htmlspecialchars($seatList) . '</strong></p>
-        <p>Gesamtbetrag: <strong>CHF ' . number_format((float)$res['total_amount'], 2) . '</strong></p>
-        <p style="font-size:0.9rem;color:#888;">'
-            . ($res['discount_type'] === 'student' ? '(Studentenpreis)' : '(Normalpreis)') .
-            ($delivery === 'mail' ? '<br>+ Fr. 5.-- Zustellung per Post' : '') .
-        '</p>
-        <p><strong>Billettbezug:</strong> ' . ($delivery === 'mail' ? 'Zustellung per Post nach Zahlungseingang' . ($deliveryAddress ? ' an: ' . htmlspecialchars($deliveryAddress) : '') : 'Abholung an der Kasse bis 30 Min. vor Konzertbeginn') . '</p>
-        ' . ($delivery === 'mail' ? '
-        <p>' . htmlspecialchars(BANK_INFO_TEXT) . '</p>
-        <table border="0" cellpadding="4" style="margin:12px 0;">
-            <tr><td><strong>Bank:</strong></td><td>' . htmlspecialchars(BANK_NAME) . '</td></tr>
-            <tr><td><strong>PK:</strong></td><td>' . htmlspecialchars(BANK_PC) . '</td></tr>
-            <tr><td><strong>IBAN:</strong></td><td>' . htmlspecialchars(BANK_IBAN) . '</td></tr>
-        </table>' : '
-        <p style="color:#888;">Die Bezahlung erfolgt bei der Abholung an der Kasse.</p>') . '
-        <div class="footer">
-            <p>Oratorienchor Kreuzlingen<br>
-            <a href="https://oratorienchor-kreuzlingen.ch">oratorienchor-kreuzlingen.ch</a></p>
-        </div>
-    </body></html>';
+        $success = 'Deine Reservierung wurde erfolgreich bestätigt!';
 
-    sendEmail($res['email'], $subject, $body);
+        // Send payment info email
+        $seatList = implode(', ', json_decode($res['seats_json'], true) ?: []);
+        $delivery = $res['delivery_option'] ?? 'pickup';
+        $deliveryAddress = $res['address'] ?? '';
+        $concertDate = getSetting('concert_date', 'Sonntag, 27. September 2026, 17:00 Uhr');
+        $concertLocation = getSetting('concert_location', 'Kirche St. Stefan, Kreuzlingen-Emmishofen');
+        $concertHtml = '<p style="font-size:0.9rem;color:#888;">' . htmlspecialchars($concertDate) . '<br>' . htmlspecialchars($concertLocation) . '</p>';
+        $subject = 'Ticket-Reservierung erfolgreich';
+        $body = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+            body { font-family: -apple-system, sans-serif; color: #333; line-height: 1.6; }
+            .footer { margin-top:24px; font-size:0.85rem; color:#888; }
+        </style></head><body>
+            <h2>Ticket-Reservierung</h2>
+            ' . $concertHtml . '
+            <p>Sehr geehrte/r ' . htmlspecialchars($res['customer_name']) . ',</p>
+            <p>Ihre Reservierung für folgende Plätze ist bestätigt:</p>
+            <p><strong>' . htmlspecialchars($seatList) . '</strong></p>
+            <p>Gesamtbetrag: <strong>CHF ' . number_format((float)$res['total_amount'], 2) . '</strong></p>
+            <p style="font-size:0.9rem;color:#888;">'
+                . ($res['discount_type'] === 'student' ? '(Studentenpreis)' : '(Normalpreis)') .
+                ($delivery === 'mail' ? '<br>+ Fr. 5.-- Zustellung per Post' : '') .
+            '</p>
+            <p><strong>Billettbezug:</strong> ' . ($delivery === 'mail' ? 'Zustellung per Post nach Zahlungseingang' . ($deliveryAddress ? ' an: ' . htmlspecialchars($deliveryAddress) : '') : 'Abholung an der Kasse bis 30 Min. vor Konzertbeginn') . '</p>
+            ' . ($delivery === 'mail' ? '
+            <p>' . htmlspecialchars(BANK_INFO_TEXT) . '</p>
+            <table border="0" cellpadding="4" style="margin:12px 0;">
+                <tr><td><strong>Bank:</strong></td><td>' . htmlspecialchars(BANK_NAME) . '</td></tr>
+                <tr><td><strong>PK:</strong></td><td>' . htmlspecialchars(BANK_PC) . '</td></tr>
+                <tr><td><strong>IBAN:</strong></td><td>' . htmlspecialchars(BANK_IBAN) . '</td></tr>
+            </table>' : '
+            <p style="color:#888;">Die Bezahlung erfolgt bei der Abholung an der Kasse.</p>') . '
+            <div class="footer">
+                <p>Oratorienchor Kreuzlingen<br>
+                <a href="https://oratorienchor-kreuzlingen.ch">oratorienchor-kreuzlingen.ch</a></p>
+            </div>
+        </body></html>';
+
+        sendEmail($res['email'], $subject, $body);
+    }
 }
 ?><!DOCTYPE html>
 <html lang="de">

@@ -11,6 +11,13 @@ $db = getDb();
 $message = '';
 $error = '';
 
+function generateCsrfToken(): string {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
 // Auto-migrate missing columns
 foreach ([
     "ALTER TABLE reservations ADD COLUMN delivery_option ENUM('pickup','mail') NOT NULL DEFAULT 'pickup' AFTER discount_type",
@@ -27,6 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $msg = '';
     $err = '';
+
+    // CSRF validation
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+        $err = 'Ungültiges CSRF-Token. Bitte Seite neu laden.';
+        $params = ['err' => $err];
+        header('Location: index.php?' . http_build_query($params));
+        exit;
+    }
 
     if ($action === 'update_settings') {
         $group = $_POST['group'] ?? 'all';
@@ -93,6 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ->execute([$hash, $_SESSION['admin_id']]);
             $msg = 'Passwort geändert.';
         }
+    }
+
+    if ($action === 'logout') {
+        session_destroy();
+        header('Location: login.php');
+        exit;
     }
 
     // PRG: redirect to avoid form resubmission
@@ -365,17 +386,17 @@ $reservations = $db->query("
             <a href="<?= SITE_URL ?>">&#8592; Zurück zur Ticket-Seite</a>
             <span style="color:rgba(255,255,255,0.5);margin:0 10px;">|</span>
             <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;"><?= htmlspecialchars($_SESSION['admin_user']) ?></span>
-            <a href="?logout=1" style="margin-left:10px;font-size:0.85rem;">Anmelden</a>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                <button type="submit" style="background:none;border:none;color:#c8a96e;cursor:pointer;font-size:0.85rem;margin-left:10px;">Abmelden</button>
+            </form>
         </div>
     </div>
 </header>
 
 <?php
-if (isset($_GET['logout'])) {
-    session_destroy();
-    header('Location: login.php');
-    exit;
-}
+// Logout is now handled via POST action below
 ?>
 
 <div class="container">
@@ -413,9 +434,10 @@ if (isset($_GET['logout'])) {
         <!-- Left: Concert info + Prices -->
         <div class="card">
             <h2>Einstellungen</h2>
-            <form method="post">
-                <input type="hidden" name="action" value="update_settings">
-                <input type="hidden" name="group" value="prices">
+                <form method="post">
+                    <input type="hidden" name="action" value="update_settings">
+                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                    <input type="hidden" name="group" value="prices">
 
                 <div class="form-group">
                     <label for="concert_date">Konzert-Datum und -Uhrzeit</label>
@@ -478,6 +500,7 @@ if (isset($_GET['logout'])) {
                 <h2>Buchungskonfiguration</h2>
                 <form method="post">
                     <input type="hidden" name="action" value="update_settings">
+                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                     <input type="hidden" name="group" value="booking">
 
                     <div class="form-group toggle-wrap">
@@ -497,6 +520,7 @@ if (isset($_GET['logout'])) {
                 <h2>Admin-Passwort ändern</h2>
                 <form method="post">
                     <input type="hidden" name="action" value="change_password">
+                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                     <div class="form-group">
                         <label for="new_password">Neues Passwort</label>
                         <div class="pw-wrap">
@@ -591,6 +615,7 @@ if (isset($_GET['logout'])) {
                                 <a href="export-csv.php?id=<?= $r['id'] ?>" class="btn btn-sm" style="text-decoration:none;">Speichern</a>
                                 <form method="post" onsubmit="return confirm('Reservierung löschen?');" style="display:inline;">
                                     <input type="hidden" name="action" value="delete_reservation">
+                                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                                     <input type="hidden" name="id" value="<?= $r['id'] ?>">
                                     <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
                                 </form>
@@ -723,10 +748,12 @@ function confirmDeleteAll() {
 function submitDeleteAll() {
     const form = document.createElement('form');
     form.method = 'post';
-    form.innerHTML = '<input type="hidden" name="action" value="clear_all"><input type="hidden" name="confirmed" value="1">';
+    form.innerHTML = '<input type="hidden" name="action" value="clear_all"><input type="hidden" name="confirmed" value="1"><input type="hidden" name="csrf_token" value="' + CSRF_TOKEN + '">';
     document.body.appendChild(form);
     form.submit();
 }
+
+const CSRF_TOKEN = '<?= generateCsrfToken() ?>';
 
 async function handleSeatClick(seat) {
     const mode = getAdminMode();
@@ -783,7 +810,7 @@ async function handleSeatClick(seat) {
         const res = await fetch('../api/admin-update-seat.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({seat_number: seat.number, status: targetStatus, is_bodan: targetBodan}),
+            body: JSON.stringify({seat_number: seat.number, status: targetStatus, is_bodan: targetBodan, csrf_token: CSRF_TOKEN}),
         });
         const data = await res.json();
         if (data.error) { alert(data.error); return; }
@@ -798,7 +825,7 @@ async function doUnreserve(seat) {
         const res = await fetch('../api/admin-update-seat.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({seat_number: seat.number, status: 'available', is_bodan: seat.is_bodan ? 1 : 0}),
+            body: JSON.stringify({seat_number: seat.number, status: 'available', is_bodan: seat.is_bodan ? 1 : 0, csrf_token: CSRF_TOKEN}),
         });
         const data = await res.json();
         if (data.error) { alert(data.error); return; }

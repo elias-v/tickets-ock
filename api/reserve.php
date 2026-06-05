@@ -89,18 +89,20 @@ if ($bookingEnabled !== '1') {
     jsonResponse(['error' => 'Die Ticketreservierung ist momentan deaktiviert.'], 403);
 }
 
-// --- Validate seats ---
+$db->beginTransaction();
+
+// --- Validate seats (with row locks) ---
 $seatNumbers = array_map('intval', $seats);
 $placeholders = implode(',', array_fill(0, count($seatNumbers), '?'));
-$stmt = $db->prepare("SELECT seat_number, category, status, is_bodan FROM seats WHERE seat_number IN ($placeholders)");
+$stmt = $db->prepare("SELECT seat_number, category, status, is_bodan FROM seats WHERE seat_number IN ($placeholders) FOR UPDATE");
 $stmt->execute($seatNumbers);
 $seatRows = $stmt->fetchAll();
 
 if (count($seatRows) !== count($seatNumbers)) {
+    $db->rollBack();
     jsonResponse(['error' => 'Einige ausgewählte Plätze existieren nicht.'], 400);
 }
 
-// Check for disabled/bodan/reserved/pending seats
 $dbSeatMap = [];
 foreach ($seatRows as $r) {
     $dbSeatMap[(int)$r['seat_number']] = $r;
@@ -124,10 +126,11 @@ foreach ($settings as $s) {
 }
 $disabledSet = array_flip($disabledPlaces);
 
-// Check pending/reserved for same seats
+// Check pending/reserved for same seats (within transaction)
 $pendingSeats = $db->prepare("
     SELECT seats_json FROM reservations
     WHERE status = 'pending' AND expires_at > NOW()
+    FOR UPDATE
 ");
 $pendingSeats->execute();
 $pendingNumbers = [];
@@ -140,6 +143,7 @@ $pendingSet = array_flip($pendingNumbers);
 $reservedSeats = $db->prepare("
     SELECT seats_json FROM reservations
     WHERE status = 'confirmed'
+    FOR UPDATE
 ");
 $reservedSeats->execute();
 $reservedNumbers = [];
@@ -165,6 +169,7 @@ foreach ($seatNumbers as $num) {
 }
 
 if (count($unavailable) > 0) {
+    $db->rollBack();
     jsonResponse([
         'error' => 'Folgende Plätze sind nicht mehr verfügbar: ' . implode(', ', $unavailable) .
             '. Bitte aktualisiere den Sitzplan und wähle erneut.'
@@ -205,6 +210,8 @@ $stmt->execute([
     $ip,
     $expiresAt,
 ]);
+
+$db->commit();
 
 // --- Send confirmation email ---
 $confirmLink = SITE_URL . '/api/confirm.php?token=' . urlencode($token);
