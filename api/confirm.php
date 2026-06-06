@@ -9,6 +9,15 @@ if (!$token) {
 
 $db = getDb();
 
+// Rate limiting
+$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+$stmt = $db->prepare("SELECT COUNT(*) FROM rate_limits WHERE ip_address = ? AND action_type = 'confirm' AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+$stmt->execute([$ip]);
+if ((int)$stmt->fetchColumn() >= 5) {
+    die('Zu viele Anfragen. Bitte warte eine Weile.');
+}
+$db->prepare("INSERT INTO rate_limits (ip_address, action_type) VALUES (?, 'confirm')")->execute([$ip]);
+
 // Auto-migrate missing columns
 foreach ([
     "ALTER TABLE reservations ADD COLUMN delivery_option ENUM('pickup','mail') NOT NULL DEFAULT 'pickup' AFTER discount_type",

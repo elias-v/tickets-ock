@@ -145,7 +145,7 @@ foreach ($seatNumbers as $num) {
         $unavailable[] = $num;
     } elseif (isset($pendingSet[$num])) {
         $unavailable[] = $num;
-    } elseif (isset($reservedSet[$num]) || $s['status'] === 'reserved') {
+    } elseif (isset($reservedSet[$num])) {
         $unavailable[] = $num;
     }
 }
@@ -159,9 +159,14 @@ if (count($unavailable) > 0) {
 }
 
 // --- Calculate price ---
-$studentPrice = (float)getSetting('price_student', DEFAULT_PRICE_STUDENT);
-$priceKat1 = (float)getSetting('price_kat1', DEFAULT_PRICE_KAT1);
-$priceKat2 = (float)getSetting('price_kat2', DEFAULT_PRICE_KAT2);
+$priceRows = $db->query("SELECT `key`, `value` FROM settings WHERE `key` IN ('price_student','price_kat1','price_kat2')")->fetchAll();
+$priceSettings = [];
+foreach ($priceRows as $pr) {
+    $priceSettings[$pr['key']] = (float)$pr['value'];
+}
+$studentPrice = $priceSettings['price_student'] ?? DEFAULT_PRICE_STUDENT;
+$priceKat1 = $priceSettings['price_kat1'] ?? DEFAULT_PRICE_KAT1;
+$priceKat2 = $priceSettings['price_kat2'] ?? DEFAULT_PRICE_KAT2;
 
 $total = 0;
 foreach ($seatNumbers as $num) {

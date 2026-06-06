@@ -24,7 +24,7 @@ $bookingEnabled = ($settings['booking_enabled'] ?? '1') === '1';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="assets/style.css?v=<?= filemtime(__DIR__ . '/assets/style.css') ?>">
 </head>
 <body>
 
@@ -188,7 +188,7 @@ $bookingEnabled = ($settings['booking_enabled'] ?? '1') === '1';
     <a href="https://oratorienchor-kreuzlingen.ch/datenschutzerklaerung/" target="_blank" rel="noopener" style="color:#888; text-decoration:underline;">Datenschutzerklärung</a>
 </footer>
 
-<script src="assets/seat-grid.js?v=<?= time() ?>"></script>
-<script src="assets/app.js?v=<?= time() ?>"></script>
+<script src="assets/seat-grid.js?v=<?= filemtime(__DIR__ . '/assets/seat-grid.js') ?>"></script>
+<script src="assets/app.js?v=<?= filemtime(__DIR__ . '/assets/app.js') ?>"></script>
 </body>
 </html>

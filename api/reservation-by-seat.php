@@ -16,17 +16,10 @@ if ($seatNumber < 1) {
 $db = getDb();
 
 $stmt = $db->prepare("SELECT id, customer_name, email, phone, address, notes, seats_json, total_amount, discount_type, delivery_option, status, created_at
-    FROM reservations WHERE status IN ('confirmed', 'pending') ORDER BY created_at DESC");
-$stmt->execute();
-
-$result = null;
-while ($row = $stmt->fetch()) {
-    $nums = json_decode($row['seats_json'], true) ?: [];
-    if (in_array($seatNumber, $nums)) {
-        $result = $row;
-        break;
-    }
-}
+    FROM reservations WHERE status IN ('confirmed', 'pending') AND JSON_CONTAINS(seats_json, CAST(? AS JSON))
+    ORDER BY created_at DESC LIMIT 1");
+$stmt->execute([(string)$seatNumber]);
+$result = $stmt->fetch();
 
 if (!$result) {
     jsonResponse(['error' => 'Keine Reservierung für diesen Platz gefunden.'], 404);

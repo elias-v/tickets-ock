@@ -29,6 +29,13 @@ foreach ([
     try { $db->exec($sql); } catch (Exception $e) {}
 }
 
+// Load current settings (needed before POST handling for fallback)
+$settings = [];
+$rows = $db->query("SELECT `key`, `value` FROM settings")->fetchAll();
+foreach ($rows as $row) {
+    $settings[$row['key']] = $row['value'];
+}
+
 // Handle actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -133,13 +140,6 @@ $error = $_GET['err'] ?? '';
 function formatPrice($val) {
     $v = (float)$val;
     return $v == (int)$v ? (string)(int)$v : number_format($v, 2);
-}
-
-// Load current settings
-$settings = [];
-$rows = $db->query("SELECT `key`, `value` FROM settings")->fetchAll();
-foreach ($rows as $row) {
-    $settings[$row['key']] = $row['value'];
 }
 
 // Load reservations
