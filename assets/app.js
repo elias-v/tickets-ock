@@ -256,6 +256,11 @@ async function submitOrder(event) {
             'success'
         );
         state.selected = [];
+        const seatsRes = await fetch('api/get-seats.php');
+        if (seatsRes.ok) {
+            const seatsData = await seatsRes.json();
+            state.seats = seatsData.seats;
+        }
         renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement);
         renderCart();
         document.getElementById('order-form').reset();

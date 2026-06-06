@@ -108,24 +108,6 @@ foreach ($seatRows as $r) {
     $dbSeatMap[(int)$r['seat_number']] = $r;
 }
 
-// Load admin settings for disabled override
-$disabledPlaces = [];
-$settings = $db->query("SELECT `key`, `value` FROM settings")->fetchAll();
-foreach ($settings as $s) {
-    if ($s['key'] === 'disabled_plaetze') {
-        foreach (explode(',', $s['value']) as $part) {
-            $part = trim($part);
-            if (str_contains($part, '-')) {
-                [$a, $b] = array_map('intval', explode('-', $part));
-                $disabledPlaces = array_merge($disabledPlaces, range($a, $b));
-            } elseif (is_numeric($part)) {
-                $disabledPlaces[] = (int)$part;
-            }
-        }
-    }
-}
-$disabledSet = array_flip($disabledPlaces);
-
 // Check pending/reserved for same seats (within transaction)
 $pendingSeats = $db->prepare("
     SELECT seats_json FROM reservations
@@ -157,7 +139,7 @@ $unavailable = [];
 foreach ($seatNumbers as $num) {
     $s = $dbSeatMap[$num] ?? null;
     if (!$s) { $unavailable[] = $num; continue; }
-    if (isset($disabledSet[$num]) || $s['status'] === 'disabled') {
+    if ($s['status'] === 'disabled') {
         $unavailable[] = $num;
     } elseif ($s['is_bodan']) {
         $unavailable[] = $num;
@@ -177,11 +159,14 @@ if (count($unavailable) > 0) {
 }
 
 // --- Calculate price ---
+$studentPrice = (float)getSetting('price_student', DEFAULT_PRICE_STUDENT);
+$priceKat1 = (float)getSetting('price_kat1', DEFAULT_PRICE_KAT1);
+$priceKat2 = (float)getSetting('price_kat2', DEFAULT_PRICE_KAT2);
+
 $total = 0;
 foreach ($seatNumbers as $num) {
     $s = $dbSeatMap[$num];
-    $price = $isStudent ? (float)getSetting('price_student', DEFAULT_PRICE_STUDENT) :
-        ($s['category'] === '1' ? (float)getSetting('price_kat1', DEFAULT_PRICE_KAT1) : (float)getSetting('price_kat2', DEFAULT_PRICE_KAT2));
+    $price = $isStudent ? $studentPrice : ($s['category'] === '1' ? $priceKat1 : $priceKat2);
     $total += $price;
 }
 if ($delivery === 'mail') {
