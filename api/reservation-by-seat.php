@@ -15,6 +15,14 @@ if ($seatNumber < 1) {
 
 $db = getDb();
 
+// Auto-migrate missing columns
+foreach ([
+    "ALTER TABLE reservations ADD COLUMN delivery_option ENUM('pickup','mail') NOT NULL DEFAULT 'pickup' AFTER discount_type",
+    "ALTER TABLE reservations ADD COLUMN notes TEXT NOT NULL DEFAULT '' AFTER address",
+] as $sql) {
+    try { $db->exec($sql); } catch (Exception $e) {}
+}
+
 $stmt = $db->prepare("SELECT id, customer_name, email, phone, address, notes, seats_json, total_amount, discount_type, delivery_option, status, created_at
     FROM reservations WHERE status IN ('confirmed', 'pending')
     ORDER BY created_at DESC");
