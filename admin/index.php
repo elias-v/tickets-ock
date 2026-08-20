@@ -778,11 +778,16 @@ async function handleSeatClick(seat) {
         let resInfo;
         try {
             const r = await fetch('../api/reservation-by-seat.php?seat=' + seat.number);
-            const d = await r.json();
+            const text = await r.text();
+            let d;
+            try { d = JSON.parse(text); } catch (err) {
+                alert('Fehler beim Laden der Reservierungsdaten.\nAntwort: ' + text.slice(0, 300));
+                return;
+            }
             if (d.error) { alert(d.error); return; }
             resInfo = d.reservation;
         } catch (e) {
-            alert('Fehler beim Laden der Reservierungsdaten.');
+            alert('Fehler beim Laden der Reservierungsdaten.\nDetails: ' + (e.message || e));
             return;
         }
 
