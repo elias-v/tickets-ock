@@ -110,14 +110,14 @@ $stmt = $pdo->prepare('
     VALUES (?, ?, ?, ?, ?, ?)
 ');
 
-function insertSeats(PDO $stmt, int $start, int $end, int $row, string $cat, string $section, int $colStart, string $status = 'available'): void {
+function insertSeats(PDOStatement $stmt, int $start, int $end, int $row, string $cat, string $section, int $colStart, string $status = 'available'): void {
     for ($i = $start; $i <= $end; $i++) {
         $col = $colStart + ($i - $start);
         $stmt->execute([$i, $row, $cat, $section, $col, $status]);
     }
 }
 
-function insertSeat(PDO $stmt, int $num, int $row, string $cat, string $section, int $col, string $status = 'available'): void {
+function insertSeat(PDOStatement $stmt, int $num, int $row, string $cat, string $section, int $col, string $status = 'available'): void {
     $stmt->execute([$num, $row, $cat, $section, $col, $status]);
 }
 
