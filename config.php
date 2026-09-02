@@ -81,6 +81,49 @@ function jsonResponse(mixed $data, int $code = 200): void {
     exit;
 }
 
+function ensureLayoutSchema(): void {
+    $db = getDb();
+    $migrations = [
+        "CREATE TABLE IF NOT EXISTS seat_layouts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            cols INT NOT NULL DEFAULT 35,
+            `rows` INT NOT NULL DEFAULT 30,
+            grid_config JSON NOT NULL,
+            cells JSON NOT NULL,
+            labels JSON,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+        "ALTER TABLE seats ADD COLUMN layout_id INT NULL AFTER is_bodan",
+        "ALTER TABLE seats ADD INDEX idx_layout (layout_id)",
+    ];
+    foreach ($migrations as $sql) {
+        try { $db->exec($sql); } catch (\Exception $e) {}
+    }
+}
+
+function getActiveLayout(): ?array {
+    $db = getDb();
+    ensureLayoutSchema();
+    $stmt = $db->query("SELECT id, name, cols, `rows`, grid_config, cells, labels, is_active FROM seat_layouts WHERE is_active = 1 ORDER BY id DESC LIMIT 1");
+    $row = $stmt->fetch();
+    if (!$row) return null;
+    $row['grid_config'] = json_decode($row['grid_config'], true) ?: [];
+    $row['cells'] = json_decode($row['cells'], true) ?: [];
+    $row['labels'] = json_decode($row['labels'] ?? '[]', true) ?: [];
+    return $row;
+}
+
+function getAllLayouts(): array {
+    $db = getDb();
+    ensureLayoutSchema();
+    $stmt = $db->query("SELECT id, name, cols, `rows`, is_active, created_at FROM seat_layouts ORDER BY is_active DESC, name ASC");
+    return $stmt->fetchAll() ?: [];
+}
+
 function sendEmail(string $to, string $subject, string $body): bool {
     try {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);

@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS seats (
     col_pos INT NOT NULL,
     status ENUM('available','reserved','disabled') NOT NULL DEFAULT 'available',
     is_bodan TINYINT(1) NOT NULL DEFAULT 0,
+    layout_id INT NULL,
     INDEX idx_status (status),
-    INDEX idx_row (`row_number`)
+    INDEX idx_row (`row_number`),
+    INDEX idx_layout (layout_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Bodan-Plätze markieren (nur in der Bodan Papeterie erhältlich)
@@ -65,6 +67,21 @@ CREATE TABLE IF NOT EXISTS admin_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- SEAT LAYOUTS TABLE (Sitzplan-Generator)
+CREATE TABLE IF NOT EXISTS seat_layouts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    cols INT NOT NULL DEFAULT 35,
+    rows INT NOT NULL DEFAULT 30,
+    grid_config JSON NOT NULL,
+    cells JSON NOT NULL,
+    labels JSON,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- RATE LIMITS TABLE

@@ -17,6 +17,12 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
     Deny from all
 </FilesMatch>
 
+# Deny access to seed script
+<FilesMatch "seed_layout\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
 # Deny access to composer files
 <FilesMatch "(composer\.(json|lock)|\.env)">
     Order Allow,Deny
