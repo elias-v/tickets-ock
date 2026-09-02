@@ -28,6 +28,7 @@ foreach ([
 ] as $sql) {
     try { $db->exec($sql); } catch (Exception $e) {}
 }
+ensureLayoutSchema();
 
 // Load current settings (needed before POST handling for fallback)
 $settings = [];
@@ -383,6 +384,7 @@ $reservations = $db->query("
     <div class="container">
         <h1>Admin-Bereich – Oratorienchor Kreuzlingen</h1>
         <div>
+            <a href="layout-editor.php" style="margin-right:12px;">Sitzplan-Editor</a>
             <a href="<?= SITE_URL ?>">&#8592; Zurück zur Ticket-Seite</a>
             <span style="color:rgba(255,255,255,0.5);margin:0 10px;">|</span>
             <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;"><?= htmlspecialchars($_SESSION['admin_user']) ?></span>
@@ -657,12 +659,17 @@ function togglePw(id, btn) {
 
 // Admin seat plan
 let adminSeats = [];
+let adminLayout = null;
 
 async function loadAdminSeats() {
     try {
-        const res = await fetch('../api/get-seats.php');
-        const data = await res.json();
+        const [seatsRes, layoutRes] = await Promise.all([
+            fetch('../api/get-seats.php'),
+            fetch('../api/layout.php').then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        const data = await seatsRes.json();
         adminSeats = data.seats;
+        adminLayout = layoutRes && !layoutRes.error ? layoutRes : null;
         renderAdminSeats();
     } catch (e) {
         document.getElementById('admin-grid').innerHTML = '<p style="color:#e74c3c;">Fehler beim Laden des Sitzplans.</p>';
@@ -691,7 +698,7 @@ document.querySelectorAll('input[name="admin-mode"]').forEach(r => {
 });
 
 function renderAdminSeats() {
-    renderGrid(document.getElementById('admin-grid'), adminSeats, createAdminCell);
+    renderGrid(document.getElementById('admin-grid'), adminSeats, createAdminCell, adminLayout);
 }
 
 function createAdminCell(seat) {

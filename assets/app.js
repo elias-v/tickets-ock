@@ -5,18 +5,23 @@ const state = {
     isStudent: false,
     delivery: 'pickup',
     bookingEnabled: true,
+    layout: null,
 };
 
 async function init() {
     try {
-        const res = await fetch('api/get-seats.php');
-        if (!res.ok) throw new Error('Failed to load seat data');
-        const data = await res.json();
+        const [seatsRes, layoutRes] = await Promise.all([
+            fetch('api/get-seats.php'),
+            fetch('api/layout.php').then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        if (!seatsRes.ok) throw new Error('Failed to load seat data');
+        const data = await seatsRes.json();
         state.seats = data.seats;
         state.prices = data.prices;
         state.bookingEnabled = data.booking_enabled;
+        state.layout = layoutRes && !layoutRes.error ? layoutRes : null;
 
-        renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement);
+        renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement, state.layout);
         renderCart();
 
         if (!state.bookingEnabled) {
@@ -92,7 +97,7 @@ function toggleSeat(num) {
         state.selected.push(num);
     }
 
-    renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement);
+    renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement, state.layout);
     renderCart();
 }
 
@@ -261,7 +266,7 @@ async function submitOrder(event) {
             const seatsData = await seatsRes.json();
             state.seats = seatsData.seats;
         }
-        renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement);
+        renderGrid(document.getElementById('grid-container'), state.seats, createSeatElement, state.layout);
         renderCart();
         document.getElementById('order-form').reset();
 

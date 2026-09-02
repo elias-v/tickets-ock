@@ -823,6 +823,11 @@ body {
 /* PRINT STYLES */
 .no-print { /* admin no-print */ }
 
+/* NEW CELL TYPES (layout-editor) */
+.seat-cell.stage { background: #d5d5d5; color: #555; border-color: #bbb; }
+.seat-cell.aisle { background: #f0ede8; color: #999; border-color: #d8d4cc; }
+.seat-cell.tech { background: #e8e0d0; color: #7a6a50; border-color: #c8b898; }
+
 /* UTILITY */
 .mt-2 { margin-top: 8px; }
 .mb-2 { margin-bottom: 8px; }
