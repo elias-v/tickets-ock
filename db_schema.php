@@ -164,14 +164,14 @@ $rows5to18 = [
 
 foreach ($rows5to18 as $row => $seats) {
     if (empty($seats)) continue;
-    $half = count($seats) / 2;
+    $half = intdiv(count($seats), 2);
     for ($i = 0; $i < $half; $i++) {
         $cat = ($row <= 15) ? '1' : '2';
-        insertSeat($stmt, $seats[$i], $row, $cat, 'left', 8 + $i, 'available');
+        insertSeat($stmt, (int)$seats[$i], $row, $cat, 'left', 8 + $i, 'available');
     }
     for ($i = $half; $i < count($seats); $i++) {
         $cat = ($row <= 15) ? '1' : '2';
-        insertSeat($stmt, $seats[$i], $row, $cat, 'right', 19 + ($i - $half), 'available');
+        insertSeat($stmt, (int)$seats[$i], $row, $cat, 'right', 19 + ($i - $half), 'available');
     }
 }
 
