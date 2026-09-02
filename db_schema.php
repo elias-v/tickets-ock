@@ -141,12 +141,9 @@ foreach ([19,20,21,22,23,24] as $i => $num) {
     insertSeat($stmt, $num, 3, '2', 'front_right', 30 + $i, 'available');
 }
 
-// --- ROW 4-18 --- all available except bodan rows
-insertSeats($stmt, 81, 100, 4, '1', 'left', 8, 'available');
-// Right 91-100
-for ($i = 0; $i < 10; $i++) {
-    insertSeat($stmt, 91 + $i, 4, '1', 'right', 19 + $i, 'available');
-}
+// --- ROW 4 --- left 81-90, right 91-100
+insertSeats($stmt, 81, 90, 4, '1', 'left', 8, 'available');
+insertSeats($stmt, 91, 100, 4, '1', 'right', 19, 'available');
 
 $rows5to18 = [
     5 => [102,103,104,105,106,107,108,109,110, 111,112,113,114,115,116,117,118,119,120],
