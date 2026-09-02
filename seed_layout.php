@@ -51,7 +51,7 @@ $labels = [
     ['text' => 'Aufgang', 'position' => 'empore-aufgang', 'colStart' => 26, 'colEnd' => 30],
 ];
 
-$seats = $db->query("SELECT seat_number, row_number, category, section, col_pos, is_bodan FROM seats ORDER BY row_number, col_pos")->fetchAll();
+$seats = $db->query("SELECT seat_number, `row_number`, category, section, col_pos, is_bodan FROM seats ORDER BY `row_number`, col_pos")->fetchAll();
 
 $cells = [];
 foreach ($seats as $s) {
