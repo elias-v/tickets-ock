@@ -33,7 +33,7 @@ $gridConfig = [
         ['idx' => 35, 'type' => 'margin'],
     ],
     'rowRange' => [2, 22],
-    'emporeRows' => [23, 26],
+    'emporeRows' => [23, 24, 25, 26],
     'emporeConfig' => [
         23 => ['center' => 'spieltisch', 'leftCols' => [8,9,10,11,12,13,14], 'rightCols' => []],
         24 => ['center' => '', 'leftCols' => [8,9,10,11,12,13,14], 'rightCols' => [26,27,28,29]],

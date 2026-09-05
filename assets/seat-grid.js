@@ -221,7 +221,7 @@ function buildDynamicRow(rn, rowSeats, cols, createCell) {
     row.className = 'grid-row';
 
     cols.forEach(cd => {
-        if (cd.type === 'spacer' || cd.type === 'margin') {
+        if (cd.type === 'spacer') {
             const el = document.createElement('div');
             el.className = 'seat-cell empty';
             row.appendChild(el);
